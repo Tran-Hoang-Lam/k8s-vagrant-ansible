@@ -1,0 +1,10 @@
+all:
+  children:
+    master:
+      hosts:
+        192.168.68.113:
+
+    worker:
+      hosts:
+        192.168.68.148:
+        192.168.68.149:

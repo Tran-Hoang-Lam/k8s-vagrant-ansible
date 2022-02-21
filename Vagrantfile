@@ -23,6 +23,10 @@ Vagrant.configure("2") do |config|
                 echo #{ssh_pub_key} >> /home/ansible/.ssh/authorized_keys
             SHELL
         end
+
+#         master.vm.provision "ansible" do |ansible|
+#             ansible.playbook = "k8s-setup/k8s-master-playbook.yaml"
+#         end
     end
 
 #     (1..N).each do |i|

@@ -16,25 +16,6 @@
           - gnupg-agent
           - software-properties-common
 
-    - name: Add an apt signing key for Docker
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
-
-    - name: Add apt repository for stable version
-      apt_repository:
-        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
-        state: present
-
-    - name: Install containerd and its dependecies
-      apt:
-        name: "{{ packages }}"
-        state: present
-        update_cache: yes
-      vars:
-        packages:
-          - containerd.io
-
     - name: Create containerd config file
       file:
         path: /etc/modules-load.d/containerd.conf
@@ -69,16 +50,37 @@
     - name: Apply systemctl
       command: sysctl --system
 
-#    - name: Create containerd config folder
-#      file:
-#        path: /etc/containerd
-#        state: directory
-#
-#    - name: Create containerd config toml
-#      command: "{{ item }}"
-#      with_items:
-#        - containerd config default | sudo tee /etc/containerd/config.toml
-#        - systemctl restart containerd
+    - name: Add an apt signing key for Docker
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add apt repository for stable version
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+        state: present
+
+    - name: Install containerd and its dependecies
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+
+    - name: Create containerd config folder
+      file:
+        path: /etc/containerd
+        state: directory
+
+    - name: Create containerd config toml
+      command: "{{ item }}"
+      with_items:
+        - containerd config default > /etc/containerd/config.toml
+        - systemctl restart containerd
 
     - name: Remove swapfile from /etc/fstab
       mount:
@@ -123,7 +125,7 @@
     - name: Configure node ip
       lineinfile:
         path: /etc/default/kubelet
-        line: KUBELET_EXTRA_ARGS=--node-ip=192.168.68.113 --cgroup-driver=cgroupfs --container-runtime=remote --container-runtime-endpoint=unix:///run/containerd/containerd.sock # replace master IP
+        line: KUBELET_EXTRA_ARGS=--node-ip=192.168.68.154 --cgroup-driver=cgroupfs --container-runtime=remote --container-runtime-endpoint=unix:///run/containerd/containerd.sock # replace master IP
 
     - name: Restart kubelet
       service:
@@ -132,7 +134,7 @@
         state: restarted
 
     - name: Initialize the Kubernetes cluster using kubeadm
-      command: kubeadm init --apiserver-advertise-address="192.168.68.113" --apiserver-cert-extra-sans="192.168.68.113"  --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=Port-6443 # replace master IP
+      command: kubeadm init  --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=Port-6443 # replace master IP
 
     - name: Setup kubeconfig for vagrant user
       command: "{{ item }}"

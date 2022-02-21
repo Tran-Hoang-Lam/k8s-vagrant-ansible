@@ -2,7 +2,7 @@ all:
   children:
     master:
       hosts:
-        192.168.68.113:
+        192.168.68.154:
 
     worker:
       hosts:

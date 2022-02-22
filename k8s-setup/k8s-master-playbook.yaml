@@ -39,9 +39,9 @@
         path: /etc/sysctl.d/99-kubernetes-cri.conf
         state: touch
 
-    - name: Fill containerd configuration
+    - name: Fill network configuration
       blockinfile:
-        path: /etc/modules-load.d/containerd.conf
+        path: /etc/sysctl.d/99-kubernetes-cri.conf
         block: |
           net.bridge.bridge-nf-call-iptables  = 1
           net.ipv4.ip_forward                 = 1
@@ -77,7 +77,7 @@
         state: directory
 
     - name: Create containerd config toml
-      command: "{{ item }}"
+      shell: "{{ item }}"
       with_items:
         - containerd config default > /etc/containerd/config.toml
         - systemctl restart containerd
@@ -125,7 +125,7 @@
     - name: Configure node ip
       lineinfile:
         path: /etc/default/kubelet
-        line: KUBELET_EXTRA_ARGS=--node-ip=192.168.68.154 --cgroup-driver=cgroupfs --container-runtime=remote --container-runtime-endpoint=unix:///run/containerd/containerd.sock # replace master IP
+        line: KUBELET_EXTRA_ARGS=--cgroup-driver=cgroupfs --container-runtime=remote --container-runtime-endpoint=unix:///run/containerd/containerd.sock # replace master IP
 
     - name: Restart kubelet
       service:
@@ -134,7 +134,7 @@
         state: restarted
 
     - name: Initialize the Kubernetes cluster using kubeadm
-      command: kubeadm init  --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=Port-6443 # replace master IP
+      command: kubeadm init  --pod-network-cidr=192.168.0.0/16 # replace master IP
 
     - name: Setup kubeconfig for vagrant user
       command: "{{ item }}"

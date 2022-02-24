@@ -1,6 +1,6 @@
 ---
-- hosts: master
-  remote_user: ansible
+- hosts: master, worker
+  remote_user: vagrant
   become: true
   tasks:
     - name: Install packages that allow apt to be used over HTTPS
@@ -67,8 +67,6 @@
         update_cache: yes
       vars:
         packages:
-          - docker-ce
-          - docker-ce-cli
           - containerd.io
 
     - name: Create containerd config folder
@@ -132,22 +130,35 @@
         name: kubelet
         daemon_reload: yes
         state: restarted
-
+- hosts: master
+  remote_user: vagrant
+  become: true
+  tasks:
     - name: Initialize the Kubernetes cluster using kubeadm
-      command: kubeadm init  --pod-network-cidr=192.168.0.0/16 # replace master IP
+      command: kubeadm init --pod-network-cidr=192.168.0.0/16 # replace master IP
+
+    - name: Create kube config folder
+      file:
+        path: /home/vagrant/.kube
+        state: directory
 
     - name: Setup kubeconfig for vagrant user
       command: "{{ item }}"
       with_items:
-        - mkdir -p /home/vagrant/.kube
         - cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
-        - chown vagrant:vagrant /home/vagrant/.kube/config
+
+    - name: Config file permission to vagrant user
+      file:
+        path: /home/vagrant/.kube/config
+        owner: vagrant
 
     - name: Install calico operator
-      command: kubectl create -f https://projectcalico.docs.tigera.io/manifests/tigera-operator.yaml
+      become: false
+      command: kubectl apply -f https://projectcalico.docs.tigera.io/manifests/tigera-operator.yaml
 
     - name: Install calico pod network
-      command: kubectl create -f https://projectcalico.docs.tigera.io/manifests/custom-resources.yaml
+      become: false
+      command: kubectl apply -f https://projectcalico.docs.tigera.io/manifests/custom-resources.yaml
 
     - name: Generate join command
       command: kubeadm token create --print-join-command
@@ -155,3 +166,12 @@
 
     - name: Copy join command to local file
       local_action: copy content="{{ join_command.stdout_lines[0] }}" dest="./join-command"
+- hosts: worker
+  remote_user: vagrant
+  become: true
+  tasks:
+    - name: Copy the join command to server location
+      copy: src=join-command dest=/tmp/join-command.sh mode=0777
+
+    - name: Join the node to cluster
+      command: sh /tmp/join-command.sh

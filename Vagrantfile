@@ -16,33 +16,23 @@ Vagrant.configure("2") do |config|
         master.vm.provision "shell" do |sh|
             ssh_pub_key = File.readlines("./id_rsa.pub").first.strip
             sh.inline = <<-SHELL
-                # Create ansible user
-                useradd -s /bin/bash -d /home/ansible/ -m -G sudo ansible
-                echo 'ansible ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-                mkdir -p /home/ansible/.ssh && chown -R ansible /home/ansible/.ssh
-                echo #{ssh_pub_key} >> /home/ansible/.ssh/authorized_keys
+                mkdir -p /home/vagrant/.ssh && chown -R vagrant /home/vagrant/.ssh
+                echo #{ssh_pub_key} >> /home/vagrant/.ssh/authorized_keys
             SHELL
         end
-
-#         master.vm.provision "ansible" do |ansible|
-#             ansible.playbook = "k8s-setup/k8s-master-playbook.yaml"
-#         end
     end
 
-#     (1..N).each do |i|
-#         config.vm.define "node-#{i}" do |node|
-#             node.vm.box = IMAGE_NAME
-#             node.vm.hostname = "node-#{i}"
-#             node.vm.provision "shell" do |sh|
-#                 ssh_pub_key = File.readlines("./id_rsa.pub").first.strip
-#                 sh.inline = <<-SHELL
-#                     # Create ansible user
-#                     useradd -s /bin/bash -d /home/ansible/ -m -G sudo ansible
-#                     echo 'ansible ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-#                     mkdir -p /home/ansible/.ssh && chown -R ansible /home/ansible/.ssh
-#                     echo #{ssh_pub_key} >> /home/ansible/.ssh/authorized_keys
-#                 SHELL
-#             end
-#         end
-#     end
+    (1..N).each do |i|
+        config.vm.define "node-#{i}" do |node|
+            node.vm.box = IMAGE_NAME
+            node.vm.hostname = "node-#{i}"
+            node.vm.provision "shell" do |sh|
+                ssh_pub_key = File.readlines("./id_rsa.pub").first.strip
+                sh.inline = <<-SHELL
+                    mkdir -p /home/vagrant/.ssh && chown -R vagrant /home/vagrant/.ssh
+                    echo #{ssh_pub_key} >> /home/vagrant/.ssh/authorized_keys
+                SHELL
+            end
+        end
+    end
 end

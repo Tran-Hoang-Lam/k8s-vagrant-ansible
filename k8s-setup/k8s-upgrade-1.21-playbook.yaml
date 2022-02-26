@@ -1,0 +1,92 @@
+---
+- hosts: master, node1, node2
+  remote_user: vagrant
+  become: true
+  tasks:
+    - name: Upgrade kubeadm
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+          packages:
+            - kubeadm=1.21.10-00
+
+- hosts: master
+  remote_user: vagrant
+  become: true
+  tasks:
+    - name: Apply upgrade
+      command: kubeadm upgrade apply -y v1.21.10
+
+    - name: Drain master node
+      become: false
+      command: kubectl drain k8s-master --ignore-daemonsets
+
+    - name: Upgrade kubectl and kubelet
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+          packages:
+            - kubelet=1.21.10-00
+            - kubectl=1.21.10-00
+
+    - name: Restart kubelet
+      command: "{{ item }}"
+      with_items:
+        - systemctl daemon-reload
+        - systemctl restart kubelet
+
+    - name: Uncordon master node
+      become: false
+      command: kubectl uncordon k8s-master
+
+- hosts: node1, node2
+  remote_user: vagrant
+  become: true
+  tasks:
+    - name: Apply upgrade
+      command: kubeadm upgrade node
+
+- hosts: master
+  remote_user: vagrant
+  become: true
+  tasks:
+    - name: Drain worker node
+      become: false
+      command: "{{ item }}"
+      with_items:
+        - kubectl drain node-1 --ignore-daemonsets
+        - kubectl drain node-2 --ignore-daemonsets
+
+- hosts: node1, node2
+  remote_user: vagrant
+  become: true
+  tasks:
+    - name: Upgrade kubectl and kubelet
+      apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+      vars:
+        packages:
+          - kubelet=1.21.10-00
+          - kubectl=1.21.10-00
+    - name: Restart kubelet
+      command: "{{ item }}"
+      with_items:
+        - systemctl daemon-reload
+        - systemctl restart kubelet
+
+- hosts: master
+  remote_user: vagrant
+  become: true
+  tasks:
+    - name: Uncordon worker node
+      become: false
+      command: "{{ item }}"
+      with_items:
+        - kubectl uncordon node-1
+        - kubectl uncordon node-2
